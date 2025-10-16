@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sprout, ImageIcon, MessageCircle, Phone, BookOpen, LogOut, Sun, Sparkles, Star, Send, Loader2, Cloud, Droplets, Wind, Mic, Volume2, CloudRain } from "lucide-react";
+import { Sprout, ImageIcon, MessageCircle, Phone, BookOpen, LogOut, Sun, Sparkles, Star, Send, Loader2, Cloud, Droplets, Wind, Mic, Volume2, CloudRain, MapPin } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -29,6 +29,7 @@ export default function DashboardPage() {
   const [weather, setWeather] = useState<any>(null);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [weatherError, setWeatherError] = useState("");
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
   // Voice assistant states
   const [isListening, setIsListening] = useState(false);
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   const [voiceInput, setVoiceInput] = useState("");
   const [voiceResponse, setVoiceResponse] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
+  const [voiceLanguage, setVoiceLanguage] = useState<'en-IN' | 'kn-IN'>('kn-IN');
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -57,7 +59,6 @@ export default function DashboardPage() {
       if (SpeechRecognition) {
         const recognitionInstance = new SpeechRecognition();
         recognitionInstance.continuous = false;
-        recognitionInstance.lang = 'kn-IN'; // Kannada language
         recognitionInstance.interimResults = false;
         recognitionInstance.maxAlternatives = 1;
 
@@ -112,8 +113,49 @@ export default function DashboardPage() {
     }
   };
 
-  const startListening = () => {
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setWeatherError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setDetectingLocation(true);
+    setWeatherError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setLoadingWeather(true);
+        
+        try {
+          const response = await fetch(`/api/weather?lat=${latitude}&lon=${longitude}`);
+          if (response.ok) {
+            const data = await response.json();
+            setWeather(data);
+            setLocation(data.location);
+          } else {
+            const error = await response.json();
+            setWeatherError(error.error || "Failed to fetch weather");
+          }
+        } catch (error) {
+          setWeatherError("Connection error. Please try again.");
+        } finally {
+          setLoadingWeather(false);
+          setDetectingLocation(false);
+        }
+      },
+      (error) => {
+        setDetectingLocation(false);
+        setWeatherError("Unable to retrieve your location. Please enter manually.");
+        console.error("Geolocation error:", error);
+      }
+    );
+  };
+
+  const startListening = (lang: 'en-IN' | 'kn-IN') => {
     if (recognition) {
+      setVoiceLanguage(lang);
+      recognition.lang = lang;
       setIsListening(true);
       setVoiceInput("");
       setVoiceResponse("");
@@ -147,8 +189,70 @@ export default function DashboardPage() {
   };
 
   const handleVoiceCommand = async (command: string) => {
+    const lowerCommand = command.toLowerCase();
+    
+    // Predefined command handling
+    // Weather commands
+    if (lowerCommand.includes('weather') || lowerCommand.includes('ಹವಾಮಾನ')) {
+      const response = "ಹವಾಮಾನ ಮಾಹಿತಿಗಾಗಿ, ದಯವಿಟ್ಟು ಮೇಲಿನ ಹವಾಮಾನ ವಿಜೆಟ್ ಬಳಸಿ ಅಥವಾ ಸ್ವಯಂಚಾಲಿತ ಸ್ಥಳ ಪತ್ತೆ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      return;
+    }
+    
+    // Soil analysis commands
+    if (lowerCommand.includes('soil') || lowerCommand.includes('ಮಣ್ಣು')) {
+      const response = "ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದೆ. ನೀವು ಮಣ್ಣಿನ ಫೋಟೋ ಅಪ್ಲೋಡ್ ಮಾಡಬಹುದು.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      setTimeout(() => router.push('/soil-analysis'), 2000);
+      return;
+    }
+    
+    // Crop info commands
+    if (lowerCommand.includes('crop') || lowerCommand.includes('ಬೆಳೆ')) {
+      const response = "ಬೆಳೆ ಮಾಹಿತಿ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದೆ. ನೀವು ಯಾವುದೇ ಬೆಳೆಯ ಬಗ್ಗೆ ಕೇಳಬಹುದು.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      setTimeout(() => router.push('/crop-info'), 2000);
+      return;
+    }
+    
+    // Chat commands
+    if (lowerCommand.includes('chat') || lowerCommand.includes('ಚಾಟ್') || lowerCommand.includes('talk') || lowerCommand.includes('ಮಾತನಾಡು')) {
+      const response = "AI ಚಾಟ್ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದೆ. ನೀವು ಕನ್ನಡದಲ್ಲಿ AI ಜೊತೆ ಮಾತನಾಡಬಹುದು.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      setTimeout(() => router.push('/ai-chat'), 2000);
+      return;
+    }
+    
+    // Help commands
+    if (lowerCommand.includes('help') || lowerCommand.includes('ಸಹಾಯ')) {
+      const response = "ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ. ನೀವು ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ, ಬೆಳೆ ಮಾಹಿತಿ, ಹವಾಮಾನ, ಅಥವಾ AI ಚಾಟ್ ಬಗ್ಗೆ ಕೇಳಬಹುದು.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      return;
+    }
+
+    // Call support commands
+    if (lowerCommand.includes('call') || lowerCommand.includes('phone') || lowerCommand.includes('ಕರೆ') || lowerCommand.includes('ಫೋನ್')) {
+      const response = "ಸಹಾಯಕ್ಕಾಗಿ ದಯವಿಟ್ಟು 1800-123-4567 ಗೆ ಕರೆ ಮಾಡಿ. ಇದು 24/7 ಲಭ್ಯವಿದೆ.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      return;
+    }
+
+    // Feedback commands
+    if (lowerCommand.includes('feedback') || lowerCommand.includes('ಪ್ರತಿಕ್ರಿಯೆ')) {
+      const response = "ದಯವಿಟ್ಟು ಕೆಳಗೆ ಪ್ರತಿಕ್ರಿಯೆ ನೀಡುವ ಫಾರಂ ಬಳಸಿ. ನಿಮ್ಮ ಅನುಭವ ನಮಗೆ ಮುಖ್ಯವಾಗಿದೆ.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      return;
+    }
+
+    // For any other input, use AI assistant
     try {
-      // Call the AI voice assistant API for any input
       const response = await fetch("/api/voice-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,18 +268,7 @@ export default function DashboardPage() {
         
         setVoiceResponse(assistantResponse);
         speak(assistantResponse, 'kn-IN');
-
-        // Check if response suggests navigation and navigate accordingly
-        const lowerResponse = assistantResponse.toLowerCase();
-        if (lowerResponse.includes('ಮಣ್ಣು') || lowerResponse.includes('soil')) {
-          setTimeout(() => router.push('/soil-analysis'), 2000);
-        } else if (lowerResponse.includes('ಬೆಳೆ') || lowerResponse.includes('crop')) {
-          setTimeout(() => router.push('/crop-info'), 2000);
-        } else if (lowerResponse.includes('ಚಾಟ್') || lowerResponse.includes('chat')) {
-          setTimeout(() => router.push('/ai-chat'), 2000);
-        }
       } else {
-        const errorData = await response.json();
         const errorResponse = "ಕ್ಷಮಿಸಿ, ಈಗ ನಾನು ಸಹಾಯ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಪ್ರಯತ್ನಿಸಿ";
         setVoiceResponse(errorResponse);
         speak(errorResponse, 'kn-IN');
@@ -335,6 +428,26 @@ export default function DashboardPage() {
                 </div>
               </form>
 
+              <div className="mt-4">
+                <Button
+                  onClick={detectLocation}
+                  disabled={detectingLocation || loadingWeather}
+                  className="w-full bg-cyan-600 hover:bg-cyan-700"
+                >
+                  {detectingLocation ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Detecting Location...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-4 h-4 mr-2" />
+                      ನನ್ನ ಸ್ಥಳ ಪತ್ತೆ ಮಾಡಿ / Auto-Detect Location
+                    </>
+                  )}
+                </Button>
+              </div>
+
               {weatherError && (
                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                   {weatherError}
@@ -393,17 +506,36 @@ export default function DashboardPage() {
             <CardContent className="pt-6">
               <div className="text-center space-y-4">
                 <p className="text-sm text-gray-600">
-                  Click the microphone and speak in Kannada
+                  Choose language and speak
                 </p>
                 
+                <div className="flex gap-2 justify-center">
+                  <Button
+                    onClick={() => startListening('kn-IN')}
+                    disabled={isListening || !recognition || isSpeaking}
+                    className={`${voiceLanguage === 'kn-IN' && isListening ? 'bg-red-500' : 'bg-purple-600'} hover:bg-purple-700`}
+                  >
+                    <Mic className="w-4 h-4 mr-2" />
+                    ಕನ್ನಡ
+                  </Button>
+                  <Button
+                    onClick={() => startListening('en-IN')}
+                    disabled={isListening || !recognition || isSpeaking}
+                    className={`${voiceLanguage === 'en-IN' && isListening ? 'bg-red-500' : 'bg-blue-600'} hover:bg-blue-700`}
+                  >
+                    <Mic className="w-4 h-4 mr-2" />
+                    English
+                  </Button>
+                </div>
+
                 <button
-                  onClick={isListening ? stopListening : startListening}
-                  disabled={!recognition || isSpeaking}
+                  onClick={stopListening}
+                  disabled={!isListening}
                   className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 ${
                     isListening
                       ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                      : "bg-purple-600 hover:bg-purple-700 hover:scale-110"
-                  } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
+                      : "bg-gray-400 cursor-not-allowed"
+                  } shadow-lg`}
                 >
                   {isListening ? (
                     <Mic className="w-10 h-10 text-white animate-bounce" />
@@ -434,12 +566,26 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                <div className="text-xs text-gray-500 space-y-1 mt-4">
-                  <p className="font-semibold">Try saying:</p>
-                  <p>• "ಬೆಂಗಳೂರು ಹವಾಮಾನ" (Weather)</p>
-                  <p>• "ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ" (Soil Analysis)</p>
-                  <p>• "ಬೆಳೆ ಮಾಹಿತಿ" (Crop Info)</p>
-                  <p>• "ಚಾಟ್" (Chat with AI)</p>
+                <div className="text-xs text-gray-500 space-y-1 mt-4 text-left">
+                  <p className="font-semibold text-center">Predefined Commands:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="font-semibold text-purple-600">Kannada:</p>
+                      <p>• "ಹವಾಮಾನ"</p>
+                      <p>• "ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ"</p>
+                      <p>• "ಬೆಳೆ ಮಾಹಿತಿ"</p>
+                      <p>• "ಚಾಟ್"</p>
+                      <p>• "ಸಹಾಯ"</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-blue-600">English:</p>
+                      <p>• "weather"</p>
+                      <p>• "soil analysis"</p>
+                      <p>• "crop info"</p>
+                      <p>• "chat"</p>
+                      <p>• "help"</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>

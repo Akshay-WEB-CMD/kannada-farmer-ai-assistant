@@ -4,10 +4,13 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const location = searchParams.get("location");
+    const lat = searchParams.get("lat");
+    const lon = searchParams.get("lon");
 
-    if (!location) {
+    // Check if either location or coordinates are provided
+    if (!location && (!lat || !lon)) {
       return NextResponse.json(
-        { error: "Location is required" },
+        { error: "Location or coordinates (lat & lon) are required" },
         { status: 400 }
       );
     }
@@ -21,9 +24,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Build query parameter - use coordinates if provided, otherwise use location name
+    const query = (lat && lon) ? `${lat},${lon}` : encodeURIComponent(location!);
+
     // Fetch weather data from Weatherstack
     const weatherResponse = await fetch(
-      `http://api.weatherstack.com/current?access_key=${apiKey}&query=${encodeURIComponent(location)}`
+      `http://api.weatherstack.com/current?access_key=${apiKey}&query=${query}`
     );
 
     if (!weatherResponse.ok) {
