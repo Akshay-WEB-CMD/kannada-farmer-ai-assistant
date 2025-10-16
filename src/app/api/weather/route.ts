@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENWEATHER_API_KEY;
+    const apiKey = process.env.WEATHERSTACK_API_KEY;
     
     if (!apiKey) {
       return NextResponse.json(
@@ -21,20 +21,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch weather data from OpenWeatherMap
+    // Fetch weather data from Weatherstack
     const weatherResponse = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
-        location
-      )}&appid=${apiKey}&units=metric`
+      `http://api.weatherstack.com/current?access_key=${apiKey}&query=${encodeURIComponent(location)}`
     );
 
     if (!weatherResponse.ok) {
-      if (weatherResponse.status === 404) {
-        return NextResponse.json(
-          { error: "Location not found" },
-          { status: 404 }
-        );
-      }
       return NextResponse.json(
         { error: "Failed to fetch weather data" },
         { status: weatherResponse.status }
@@ -43,17 +35,25 @@ export async function GET(request: NextRequest) {
 
     const weatherData = await weatherResponse.json();
 
-    // Format response
+    // Check for API errors
+    if (weatherData.error) {
+      return NextResponse.json(
+        { error: weatherData.error.info || "Failed to fetch weather data" },
+        { status: 400 }
+      );
+    }
+
+    // Format response to match the frontend expectations
     const formattedData = {
-      location: weatherData.name,
-      country: weatherData.sys.country,
-      temperature: Math.round(weatherData.main.temp),
-      feelsLike: Math.round(weatherData.main.feels_like),
-      humidity: weatherData.main.humidity,
-      description: weatherData.weather[0].description,
-      icon: weatherData.weather[0].icon,
-      windSpeed: weatherData.wind.speed,
-      pressure: weatherData.main.pressure,
+      location: weatherData.location.name,
+      country: weatherData.location.country,
+      temperature: weatherData.current.temperature,
+      feelsLike: weatherData.current.feelslike,
+      humidity: weatherData.current.humidity,
+      description: weatherData.current.weather_descriptions[0],
+      icon: weatherData.current.weather_icons[0],
+      windSpeed: weatherData.current.wind_speed,
+      pressure: weatherData.current.pressure,
     };
 
     return NextResponse.json(formattedData);

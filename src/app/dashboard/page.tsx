@@ -147,48 +147,45 @@ export default function DashboardPage() {
   };
 
   const handleVoiceCommand = async (command: string) => {
-    const lowerCommand = command.toLowerCase();
-    let response = "";
-    let responseLang = 'kn-IN';
+    try {
+      // Call the AI voice assistant API for any input
+      const response = await fetch("/api/voice-assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          input: command,
+          language: "kn"
+        }),
+      });
 
-    // Check for weather queries
-    if (lowerCommand.includes('ಹವಾಮಾನ') || lowerCommand.includes('weather')) {
-      // Extract location from command
-      const locationMatch = command.match(/(\w+)\s*(ಹವಾಮಾನ|weather)/i);
-      if (locationMatch) {
-        const loc = locationMatch[1];
-        setLocation(loc);
-        await fetchWeather(loc);
-        response = `${loc} ನ ಹವಾಮಾನ ಮಾಹಿತಿ ತರುತ್ತಿದ್ದೇನೆ`;
+      if (response.ok) {
+        const data = await response.json();
+        const assistantResponse = data.response;
+        
+        setVoiceResponse(assistantResponse);
+        speak(assistantResponse, 'kn-IN');
+
+        // Check if response suggests navigation and navigate accordingly
+        const lowerResponse = assistantResponse.toLowerCase();
+        if (lowerResponse.includes('ಮಣ್ಣು') || lowerResponse.includes('soil')) {
+          setTimeout(() => router.push('/soil-analysis'), 2000);
+        } else if (lowerResponse.includes('ಬೆಳೆ') || lowerResponse.includes('crop')) {
+          setTimeout(() => router.push('/crop-info'), 2000);
+        } else if (lowerResponse.includes('ಚಾಟ್') || lowerResponse.includes('chat')) {
+          setTimeout(() => router.push('/ai-chat'), 2000);
+        }
       } else {
-        response = "ದಯವಿಟ್ಟು ಸ್ಥಳದ ಹೆಸರು ಹೇಳಿ";
+        const errorData = await response.json();
+        const errorResponse = "ಕ್ಷಮಿಸಿ, ಈಗ ನಾನು ಸಹಾಯ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಪ್ರಯತ್ನಿಸಿ";
+        setVoiceResponse(errorResponse);
+        speak(errorResponse, 'kn-IN');
       }
+    } catch (error) {
+      console.error("Voice assistant error:", error);
+      const errorResponse = "ಕ್ಷಮಿಸಿ, ಸಂಪರ್ಕದಲ್ಲಿ ದೋಷ ಸಂಭವಿಸಿದೆ";
+      setVoiceResponse(errorResponse);
+      speak(errorResponse, 'kn-IN');
     }
-    // Check for soil analysis
-    else if (lowerCommand.includes('ಮಣ್ಣು') || lowerCommand.includes('soil')) {
-      response = "ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದ್ದೇನೆ";
-      setTimeout(() => router.push('/soil-analysis'), 1000);
-    }
-    // Check for crop info
-    else if (lowerCommand.includes('ಬೆಳೆ') || lowerCommand.includes('crop')) {
-      response = "ಬೆಳೆ ಮಾಹಿತಿ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದ್ದೇನೆ";
-      setTimeout(() => router.push('/crop-info'), 1000);
-    }
-    // Check for AI chat
-    else if (lowerCommand.includes('ಚಾಟ್') || lowerCommand.includes('chat')) {
-      response = "AI ಸಹಾಯಕರೊಂದಿಗೆ ಚಾಟ್ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದ್ದೇನೆ";
-      setTimeout(() => router.push('/ai-chat'), 1000);
-    }
-    // General greeting
-    else if (lowerCommand.includes('ನಮಸ್ಕಾರ') || lowerCommand.includes('hello')) {
-      response = `ನಮಸ್ಕಾರ ${user?.name || ''}! ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?`;
-    }
-    else {
-      response = "ಕ್ಷಮಿಸಿ, ನಾನು ಅರ್ಥಮಾಡಿಕೊಳ್ಳಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಹವಾಮಾನ, ಮಣ್ಣು, ಬೆಳೆ ಅಥವಾ ಚಾಟ್ ಎಂದು ಹೇಳಿ";
-    }
-
-    setVoiceResponse(response);
-    speak(response, responseLang);
   };
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
@@ -352,7 +349,7 @@ export default function DashboardPage() {
                     </h3>
                     <div className="flex items-center justify-center mt-4">
                       <img
-                        src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`}
+                        src={weather.icon}
                         alt={weather.description}
                         className="w-20 h-20"
                       />
@@ -376,7 +373,7 @@ export default function DashboardPage() {
                         <Wind className="w-5 h-5 mr-1" />
                         <span className="text-sm font-semibold">Wind</span>
                       </div>
-                      <p className="text-2xl font-bold text-gray-800">{weather.windSpeed} m/s</p>
+                      <p className="text-2xl font-bold text-gray-800">{weather.windSpeed} km/h</p>
                     </div>
                   </div>
                 </div>
