@@ -154,12 +154,21 @@ export default function DashboardPage() {
 
   const startListening = (lang: 'en-IN' | 'kn-IN') => {
     if (recognition) {
+      // Stop any existing recognition first
+      if (isListening) {
+        recognition.stop();
+      }
+      
       setVoiceLanguage(lang);
       recognition.lang = lang;
-      setIsListening(true);
       setVoiceInput("");
       setVoiceResponse("");
-      recognition.start();
+      
+      // Use a small delay to ensure previous recognition has fully stopped
+      setTimeout(() => {
+        setIsListening(true);
+        recognition.start();
+      }, 100);
     }
   };
 
