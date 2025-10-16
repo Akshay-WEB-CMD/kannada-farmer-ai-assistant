@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sprout, ImageIcon, MessageCircle, Phone, BookOpen, LogOut, Sun, Sparkles, Star, Send, Loader2 } from "lucide-react";
+import { Sprout, ImageIcon, MessageCircle, Phone, BookOpen, LogOut, Sun, Sparkles, Star, Send, Loader2, Cloud, Droplets, Wind, Mic, Volume2, CloudRain } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -24,6 +24,19 @@ export default function DashboardPage() {
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
 
+  // Weather states
+  const [location, setLocation] = useState("");
+  const [weather, setWeather] = useState<any>(null);
+  const [loadingWeather, setLoadingWeather] = useState(false);
+  const [weatherError, setWeatherError] = useState("");
+
+  // Voice assistant states
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceInput, setVoiceInput] = useState("");
+  const [voiceResponse, setVoiceResponse] = useState("");
+  const [recognition, setRecognition] = useState<any>(null);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (!userData) {
@@ -31,18 +44,151 @@ export default function DashboardPage() {
     } else {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
-      // Pre-fill feedback form with user data
       setFeedbackForm(prev => ({
         ...prev,
         name: parsedUser.name || "",
         email: parsedUser.email || ""
       }));
     }
+
+    // Initialize Speech Recognition
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognitionInstance = new SpeechRecognition();
+        recognitionInstance.continuous = false;
+        recognitionInstance.lang = 'kn-IN'; // Kannada language
+        recognitionInstance.interimResults = false;
+        recognitionInstance.maxAlternatives = 1;
+
+        recognitionInstance.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setVoiceInput(transcript);
+          handleVoiceCommand(transcript);
+        };
+
+        recognitionInstance.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+        };
+
+        recognitionInstance.onend = () => {
+          setIsListening(false);
+        };
+
+        setRecognition(recognitionInstance);
+      }
+    }
   }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     router.push("/login");
+  };
+
+  const fetchWeather = async (loc: string) => {
+    setLoadingWeather(true);
+    setWeatherError("");
+    try {
+      const response = await fetch(`/api/weather?location=${encodeURIComponent(loc)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setWeather(data);
+      } else {
+        const error = await response.json();
+        setWeatherError(error.error || "Failed to fetch weather");
+      }
+    } catch (error) {
+      setWeatherError("Connection error. Please try again.");
+    } finally {
+      setLoadingWeather(false);
+    }
+  };
+
+  const handleWeatherSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (location.trim()) {
+      fetchWeather(location.trim());
+    }
+  };
+
+  const startListening = () => {
+    if (recognition) {
+      setIsListening(true);
+      setVoiceInput("");
+      setVoiceResponse("");
+      recognition.start();
+    }
+  };
+
+  const stopListening = () => {
+    if (recognition) {
+      recognition.stop();
+      setIsListening(false);
+    }
+  };
+
+  const speak = (text: string, lang: string = 'kn-IN') => {
+    if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleVoiceCommand = async (command: string) => {
+    const lowerCommand = command.toLowerCase();
+    let response = "";
+    let responseLang = 'kn-IN';
+
+    // Check for weather queries
+    if (lowerCommand.includes('ಹವಾಮಾನ') || lowerCommand.includes('weather')) {
+      // Extract location from command
+      const locationMatch = command.match(/(\w+)\s*(ಹವಾಮಾನ|weather)/i);
+      if (locationMatch) {
+        const loc = locationMatch[1];
+        setLocation(loc);
+        await fetchWeather(loc);
+        response = `${loc} ನ ಹವಾಮಾನ ಮಾಹಿತಿ ತರುತ್ತಿದ್ದೇನೆ`;
+      } else {
+        response = "ದಯವಿಟ್ಟು ಸ್ಥಳದ ಹೆಸರು ಹೇಳಿ";
+      }
+    }
+    // Check for soil analysis
+    else if (lowerCommand.includes('ಮಣ್ಣು') || lowerCommand.includes('soil')) {
+      response = "ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದ್ದೇನೆ";
+      setTimeout(() => router.push('/soil-analysis'), 1000);
+    }
+    // Check for crop info
+    else if (lowerCommand.includes('ಬೆಳೆ') || lowerCommand.includes('crop')) {
+      response = "ಬೆಳೆ ಮಾಹಿತಿ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದ್ದೇನೆ";
+      setTimeout(() => router.push('/crop-info'), 1000);
+    }
+    // Check for AI chat
+    else if (lowerCommand.includes('ಚಾಟ್') || lowerCommand.includes('chat')) {
+      response = "AI ಸಹಾಯಕರೊಂದಿಗೆ ಚಾಟ್ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದ್ದೇನೆ";
+      setTimeout(() => router.push('/ai-chat'), 1000);
+    }
+    // General greeting
+    else if (lowerCommand.includes('ನಮಸ್ಕಾರ') || lowerCommand.includes('hello')) {
+      response = `ನಮಸ್ಕಾರ ${user?.name || ''}! ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?`;
+    }
+    else {
+      response = "ಕ್ಷಮಿಸಿ, ನಾನು ಅರ್ಥಮಾಡಿಕೊಳ್ಳಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಹವಾಮಾನ, ಮಣ್ಣು, ಬೆಳೆ ಅಥವಾ ಚಾಟ್ ಎಂದು ಹೇಳಿ";
+    }
+
+    setVoiceResponse(response);
+    speak(response, responseLang);
   };
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
@@ -160,6 +306,147 @@ export default function DashboardPage() {
               📍 {user.location} | 📞 {user.phoneNumber}
             </p>
           </div>
+        </div>
+
+        {/* Weather and Voice Assistant Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Weather Widget */}
+          <Card className="shadow-2xl border-2 border-blue-300 backdrop-blur-sm bg-white/95 hover:shadow-3xl transition-all animate-in fade-in slide-in-from-left duration-500">
+            <CardHeader className="bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 text-white relative overflow-hidden">
+              <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
+              <CardTitle className="flex items-center relative z-10">
+                <Cloud className="w-6 h-6 mr-2" />
+                ಹವಾಮಾನ ಮಾಹಿತಿ / Weather Info
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <form onSubmit={handleWeatherSubmit} className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="ಸ್ಥಳದ ಹೆಸರು / Enter location (e.g., Bangalore)"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={loadingWeather}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {loadingWeather ? <Loader2 className="w-4 h-4 animate-spin" /> : "Get"}
+                  </Button>
+                </div>
+              </form>
+
+              {weatherError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                  {weatherError}
+                </div>
+              )}
+
+              {weather && (
+                <div className="mt-6 space-y-4">
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-gray-800">
+                      {weather.location}, {weather.country}
+                    </h3>
+                    <div className="flex items-center justify-center mt-4">
+                      <img
+                        src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`}
+                        alt={weather.description}
+                        className="w-20 h-20"
+                      />
+                      <div className="text-5xl font-bold text-gray-800">
+                        {weather.temperature}°C
+                      </div>
+                    </div>
+                    <p className="text-gray-600 capitalize mt-2">{weather.description}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="bg-blue-50 rounded-lg p-3 text-center">
+                      <div className="flex items-center justify-center text-blue-600 mb-1">
+                        <Droplets className="w-5 h-5 mr-1" />
+                        <span className="text-sm font-semibold">Humidity</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-800">{weather.humidity}%</p>
+                    </div>
+                    <div className="bg-cyan-50 rounded-lg p-3 text-center">
+                      <div className="flex items-center justify-center text-cyan-600 mb-1">
+                        <Wind className="w-5 h-5 mr-1" />
+                        <span className="text-sm font-semibold">Wind</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-800">{weather.windSpeed} m/s</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Voice Assistant */}
+          <Card className="shadow-2xl border-2 border-purple-300 backdrop-blur-sm bg-white/95 hover:shadow-3xl transition-all animate-in fade-in slide-in-from-right duration-500">
+            <CardHeader className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 text-white relative overflow-hidden">
+              <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
+              <CardTitle className="flex items-center relative z-10">
+                <Mic className="w-6 h-6 mr-2" />
+                ಧ್ವನಿ ಸಹಾಯಕ / Voice Assistant
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="text-center space-y-4">
+                <p className="text-sm text-gray-600">
+                  Click the microphone and speak in Kannada
+                </p>
+                
+                <button
+                  onClick={isListening ? stopListening : startListening}
+                  disabled={!recognition || isSpeaking}
+                  className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    isListening
+                      ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                      : "bg-purple-600 hover:bg-purple-700 hover:scale-110"
+                  } disabled:opacity-50 disabled:cursor-not-allowed shadow-lg`}
+                >
+                  {isListening ? (
+                    <Mic className="w-10 h-10 text-white animate-bounce" />
+                  ) : isSpeaking ? (
+                    <Volume2 className="w-10 h-10 text-white animate-pulse" />
+                  ) : (
+                    <Mic className="w-10 h-10 text-white" />
+                  )}
+                </button>
+
+                {!recognition && (
+                  <p className="text-xs text-red-600">
+                    Voice recognition not supported in this browser
+                  </p>
+                )}
+
+                {voiceInput && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                    <p className="text-xs text-purple-600 font-semibold mb-1">You said:</p>
+                    <p className="text-gray-800">{voiceInput}</p>
+                  </div>
+                )}
+
+                {voiceResponse && (
+                  <div className="bg-pink-50 border border-pink-200 rounded-lg p-3">
+                    <p className="text-xs text-pink-600 font-semibold mb-1">Assistant:</p>
+                    <p className="text-gray-800">{voiceResponse}</p>
+                  </div>
+                )}
+
+                <div className="text-xs text-gray-500 space-y-1 mt-4">
+                  <p className="font-semibold">Try saying:</p>
+                  <p>• "ಬೆಂಗಳೂರು ಹವಾಮಾನ" (Weather)</p>
+                  <p>• "ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ" (Soil Analysis)</p>
+                  <p>• "ಬೆಳೆ ಮಾಹಿತಿ" (Crop Info)</p>
+                  <p>• "ಚಾಟ್" (Chat with AI)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Feature Cards with Images */}
