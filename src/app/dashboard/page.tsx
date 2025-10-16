@@ -200,17 +200,12 @@ export default function DashboardPage() {
   const handleVoiceCommand = async (command: string) => {
     const lowerCommand = command.toLowerCase();
     
-    // Predefined command handling
-    // Weather commands
-    if (lowerCommand.includes('weather') || lowerCommand.includes('ಹವಾಮಾನ')) {
-      const response = "ಹವಾಮಾನ ಮಾಹಿತಿಗಾಗಿ, ದಯವಿಟ್ಟು ಮೇಲಿನ ಹವಾಮಾನ ವಿಜೆಟ್ ಬಳಸಿ ಅಥವಾ ಸ್ವಯಂಚಾಲಿತ ಸ್ಥಳ ಪತ್ತೆ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ.";
-      setVoiceResponse(response);
-      speak(response, 'kn-IN');
-      return;
-    }
+    // Predefined command handling with multiple variations
     
-    // Soil analysis commands
-    if (lowerCommand.includes('soil') || lowerCommand.includes('ಮಣ್ಣು')) {
+    // Soil Analysis commands
+    if (lowerCommand.includes('soil') || lowerCommand.includes('ಮಣ್ಣು') || 
+        lowerCommand.includes('ಮಣ್ಣಿನ') || lowerCommand.includes('soil analysis') ||
+        lowerCommand.includes('analyse') || lowerCommand.includes('ವಿಶ್ಲೇಷಣೆ')) {
       const response = "ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದೆ. ನೀವು ಮಣ್ಣಿನ ಫೋಟೋ ಅಪ್ಲೋಡ್ ಮಾಡಬಹುದು.";
       setVoiceResponse(response);
       speak(response, 'kn-IN');
@@ -218,17 +213,11 @@ export default function DashboardPage() {
       return;
     }
     
-    // Crop info commands
-    if (lowerCommand.includes('crop') || lowerCommand.includes('ಬೆಳೆ')) {
-      const response = "ಬೆಳೆ ಮಾಹಿತಿ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದೆ. ನೀವು ಯಾವುದೇ ಬೆಳೆಯ ಬಗ್ಗೆ ಕೇಳಬಹುದು.";
-      setVoiceResponse(response);
-      speak(response, 'kn-IN');
-      setTimeout(() => router.push('/crop-info'), 2000);
-      return;
-    }
-    
-    // Chat commands
-    if (lowerCommand.includes('chat') || lowerCommand.includes('ಚಾಟ್') || lowerCommand.includes('talk') || lowerCommand.includes('ಮಾತನಾಡು')) {
+    // AI Chat commands
+    if (lowerCommand.includes('chat') || lowerCommand.includes('ಚಾಟ್') || 
+        lowerCommand.includes('talk') || lowerCommand.includes('ಮಾತನಾಡು') ||
+        lowerCommand.includes('ai') || lowerCommand.includes('assistant') ||
+        lowerCommand.includes('ಸಹಾಯಕ')) {
       const response = "AI ಚಾಟ್ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದೆ. ನೀವು ಕನ್ನಡದಲ್ಲಿ AI ಜೊತೆ ಮಾತನಾಡಬಹುದು.";
       setVoiceResponse(response);
       speak(response, 'kn-IN');
@@ -236,16 +225,32 @@ export default function DashboardPage() {
       return;
     }
     
-    // Help commands
-    if (lowerCommand.includes('help') || lowerCommand.includes('ಸಹಾಯ')) {
-      const response = "ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ. ನೀವು ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ, ಬೆಳೆ ಮಾಹಿತಿ, ಹವಾಮಾನ, ಅಥವಾ AI ಚಾಟ್ ಬಗ್ಗೆ ಕೇಳಬಹುದು.";
+    // Crop Info commands
+    if (lowerCommand.includes('crop') || lowerCommand.includes('ಬೆಳೆ') ||
+        lowerCommand.includes('farming') || lowerCommand.includes('ಕೃಷಿ') ||
+        lowerCommand.includes('plant') || lowerCommand.includes('ಸಸ್ಯ')) {
+      const response = "ಬೆಳೆ ಮಾಹಿತಿ ಪುಟಕ್ಕೆ ಹೋಗುತ್ತಿದೆ. ನೀವು ಯಾವುದೇ ಬೆಳೆಯ ಬಗ್ಗೆ ಕೇಳಬಹುದು.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      setTimeout(() => router.push('/crop-info'), 2000);
+      return;
+    }
+    
+    // Weather commands
+    if (lowerCommand.includes('weather') || lowerCommand.includes('ಹವಾಮಾನ') ||
+        lowerCommand.includes('climate') || lowerCommand.includes('temperature') ||
+        lowerCommand.includes('rain') || lowerCommand.includes('ಮಳೆ')) {
+      const response = "ಹವಾಮಾನ ಮಾಹಿತಿಗಾಗಿ, ದಯವಿಟ್ಟು ಮೇಲಿನ ಹವಾಮಾನ ವಿಜೆಟ್ ಬಳಸಿ ಅಥವಾ ಸ್ವಯಂಚಾಲಿತ ಸ್ಥಳ ಪತ್ತೆ ಬಟನ್ ಕ್ಲಿಕ್ ಮಾಡಿ.";
       setVoiceResponse(response);
       speak(response, 'kn-IN');
       return;
     }
-
-    // Call support commands
-    if (lowerCommand.includes('call') || lowerCommand.includes('phone') || lowerCommand.includes('ಕರೆ') || lowerCommand.includes('ಫೋನ್')) {
+    
+    // Call Support commands
+    if (lowerCommand.includes('call') || lowerCommand.includes('phone') || 
+        lowerCommand.includes('ಕರೆ') || lowerCommand.includes('ಫೋನ್') ||
+        lowerCommand.includes('support') || lowerCommand.includes('help line') ||
+        lowerCommand.includes('contact')) {
       const response = "ಸಹಾಯಕ್ಕಾಗಿ ದಯವಿಟ್ಟು 1800-123-4567 ಗೆ ಕರೆ ಮಾಡಿ. ಇದು 24/7 ಲಭ್ಯವಿದೆ.";
       setVoiceResponse(response);
       speak(response, 'kn-IN');
@@ -253,8 +258,18 @@ export default function DashboardPage() {
     }
 
     // Feedback commands
-    if (lowerCommand.includes('feedback') || lowerCommand.includes('ಪ್ರತಿಕ್ರಿಯೆ')) {
+    if (lowerCommand.includes('feedback') || lowerCommand.includes('ಪ್ರತಿಕ್ರಿಯೆ') ||
+        lowerCommand.includes('review') || lowerCommand.includes('rating')) {
       const response = "ದಯವಿಟ್ಟು ಕೆಳಗೆ ಪ್ರತಿಕ್ರಿಯೆ ನೀಡುವ ಫಾರಂ ಬಳಸಿ. ನಿಮ್ಮ ಅನುಭವ ನಮಗೆ ಮುಖ್ಯವಾಗಿದೆ.";
+      setVoiceResponse(response);
+      speak(response, 'kn-IN');
+      return;
+    }
+    
+    // Help commands
+    if (lowerCommand.includes('help') || lowerCommand.includes('ಸಹಾಯ') ||
+        lowerCommand.includes('what can you do') || lowerCommand.includes('features')) {
+      const response = "ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ. ನೀವು ಮಣ್ಣು ವಿಶ್ಲೇಷಣೆ, ಬೆಳೆ ಮಾಹಿತಿ, ಹವಾಮಾನ, AI ಚಾಟ್, ಅಥವಾ ಕರೆ ಸಹಾಯ ಬಗ್ಗೆ ಕೇಳಬಹುದು.";
       setVoiceResponse(response);
       speak(response, 'kn-IN');
       return;
